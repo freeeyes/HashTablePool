@@ -1,17 +1,28 @@
 #include "HashTable.h"
 #include "ShareMemory.h"
 
-//g++ -o Test ShareMemory.cpp HashTable.cpp main.cpp
+//g++ -o Test ShareMemory.cpp main.cpp
 //0是普通内存，1是共享内存
 #define MEMORY_TYPE 0
 
-//hash表内存块数组全局指针
-_Hash_Table_Cell* g_Hash_Table_Cell;
+struct _Data_Value
+{
+	int m_na;
+	
+	_Data_Value()
+	{
+		m_na = 1;
+	}
+};
 
-static void Test_Insert(CHashTable& objHashTable, const char* pKey)
+//hash表内存块数组全局指针
+_Hash_Table_Cell<_Data_Value>* g_Hash_Table_Cell;
+
+static void Test_Insert(CHashTable<_Data_Value>& objHashTable, const char* pKey)
 {
 	printf("[Test_Insert]****************.\n");
-	int nPos = objHashTable.Add_Hash_Data(pKey, pKey);
+	_Data_Value* pValue = new _Data_Value();
+	int nPos = objHashTable.Add_Hash_Data(pKey, pValue);
 	if(-1 != nPos)
 	{
 		printf("[Test_Insert]nPos=%d, key=%s.\n", nPos, pKey);
@@ -22,13 +33,13 @@ static void Test_Insert(CHashTable& objHashTable, const char* pKey)
 	}	
 }
 
-static void Test_Select(CHashTable& objHashTable, const char* pKey)
+static void Test_Select(CHashTable<_Data_Value>& objHashTable, const char* pKey)
 {
 	printf("[Test_Select]****************.\n");
-	char* pValue = objHashTable.Get_Hash_Box_Data(pKey);
+	_Data_Value* pValue = objHashTable.Get_Hash_Box_Data(pKey);
 	if(NULL != pValue)
 	{
-		printf("[main select]key=%s, value=%s.\n", pKey, pValue);
+		printf("[main select]key=%s, value=%d.\n", pKey, pValue->m_na);
 	}
 	else
 	{
@@ -36,7 +47,7 @@ static void Test_Select(CHashTable& objHashTable, const char* pKey)
 	}			
 }
 
-static void Test_Delete(CHashTable& objHashTable, const char* pKey)
+static void Test_Delete(CHashTable<_Data_Value>& objHashTable, const char* pKey)
 {
 	printf("[Test_Delete]****************.\n");
 	int nPos = objHashTable.Del_Hash_Data(pKey);
@@ -55,9 +66,8 @@ int main()
 {
 	//需要的内存块大小
 	int nKeySize   = 20;
-	int nValueSize = 100;
 	int nPoolSize  = 3;
-	size_t nArraySize = (sizeof(_Hash_Table_Cell) + nKeySize + nValueSize) * nPoolSize;
+	size_t nArraySize = (sizeof(_Hash_Table_Cell<_Data_Value>) + nKeySize + sizeof(_Data_Value)) * nPoolSize;
 
 	if(MEMORY_TYPE == 1)
 	{
@@ -65,23 +75,23 @@ int main()
 		bool blCreate = false;
 		shm_id obj_shm_id;
 		shm_key obj_shm_key = 3001; 
-		g_Hash_Table_Cell = (_Hash_Table_Cell* )Open_Share_Memory_API(obj_shm_key, nArraySize, obj_shm_id, blCreate);
+		g_Hash_Table_Cell = (_Hash_Table_Cell<_Data_Value>* )Open_Share_Memory_API(obj_shm_key, nArraySize, obj_shm_id, blCreate);
 		printf("[main](%d)USED SHAER MEMORY.\n", MEMORY_TYPE);
 	}
 	else
 	{
 		//测试当前内存
-		g_Hash_Table_Cell = (_Hash_Table_Cell* )new char[nArraySize];
+		g_Hash_Table_Cell = (_Hash_Table_Cell<_Data_Value>* )new char[nArraySize];
 		printf("[main](%d)USED LOCAL MEMORY.\n", MEMORY_TYPE);
 	}	
 	
 	//hash池初始化
-	CHashTable objHashTable;
+	CHashTable<_Data_Value> objHashTable;
 	objHashTable.Set_Base_Addr((char* )g_Hash_Table_Cell, nPoolSize);
-	objHashTable.Set_Base_Key_Addr((char* )g_Hash_Table_Cell + sizeof(_Hash_Table_Cell) * nPoolSize, 
+	objHashTable.Set_Base_Key_Addr((char* )g_Hash_Table_Cell + sizeof(_Hash_Table_Cell<_Data_Value>) * nPoolSize, 
 																	nKeySize * nPoolSize, nKeySize);
-	objHashTable.Set_Base_Value_Addr((char* )g_Hash_Table_Cell + (sizeof(_Hash_Table_Cell) + nKeySize) * nPoolSize, 
-																	nValueSize * nPoolSize, nValueSize);
+	objHashTable.Set_Base_Value_Addr((char* )g_Hash_Table_Cell + (sizeof(_Hash_Table_Cell<_Data_Value>) + nKeySize) * nPoolSize, 
+																	sizeof(_Data_Value) * nPoolSize, sizeof(_Data_Value));
 	printf("[main]Init Finish(%d),size=%d.\n", nPoolSize, objHashTable.Get_Size());
 	
 	Test_Insert(objHashTable, "shiqiang");
@@ -107,7 +117,8 @@ int main()
 	}
 	else
 	{
-		delete (char* )g_Hash_Table_Cell;
+		//delete (char* )g_Hash_Table_Cell;
+		objHashTable.Close();
 	}
 	
 	return 0;

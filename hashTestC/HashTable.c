@@ -66,8 +66,6 @@ void Clear_Hash_Table_Cell(_Hash_Table_Cell* p_Hash_Table_Cell)
 		p_Hash_Table_Cell->m_cExists       = 0;
 		p_Hash_Table_Cell->m_uHashA        = 0;
 		p_Hash_Table_Cell->m_uHashB        = 0;
-		p_Hash_Table_Cell->m_nNextKeyIndex = -1;
-		p_Hash_Table_Cell->m_nProvKeyIndex = -1;
 		if(NULL != p_Hash_Table_Cell->m_szKey)
 		{
 			memset(p_Hash_Table_Cell->m_szKey, 0, p_Hash_Table_Cell->m_nKeySize);
@@ -132,17 +130,18 @@ int GetLastClashKey(_Hash_Table_Cell *lpTable, int nCount, int nStartIndex, cons
 				//开始寻找空余的位置
 				//向后找空余
 				int i;
-				for(i = nStartIndex + 1; i < nCount; i++)
+				for(i = nStartIndex; i < nCount; i++)
 				{
 					if(lpTable[i].m_cExists == 0)
 					{
 						lpTable[i].m_cExists = 1;
 						lpTable[i].m_uHashA  = uHashA;
 						lpTable[i].m_uHashB  = uHashB;
-						if(NULL != lpTable[i].m_szKey)
-						{
+#ifndef WIN32
 							sprintf(lpTable[i].m_szKey, "%s", lpszString);
-						}	
+#else
+							sprintf_s(lpTable[i].m_szKey, lpTable[nStartIndex].m_nKeySize, "%s", lpszString);
+#endif
 						//记录链表信息
 						lpTable[nStartIndex].m_nNextKeyIndex = i;
 						lpTable[i].m_nProvKeyIndex           = nStartIndex;
@@ -161,7 +160,11 @@ int GetLastClashKey(_Hash_Table_Cell *lpTable, int nCount, int nStartIndex, cons
 						lpTable[i].m_uHashB  = uHashB;
 						if(NULL != lpTable[i].m_szKey)
 						{
+#ifndef WIN32
 							sprintf(lpTable[i].m_szKey, "%s", lpszString);
+#else
+							sprintf_s(lpTable[i].m_szKey, lpTable[nStartIndex].m_nKeySize, "%s", lpszString);
+#endif
 						}						
 						//记录链表信息
 						lpTable[nStartIndex].m_nNextKeyIndex = i;
@@ -176,6 +179,26 @@ int GetLastClashKey(_Hash_Table_Cell *lpTable, int nCount, int nStartIndex, cons
 		}
 		else
 		{
+			if(emHashState == EM_INSERT)
+			{
+				if(lpTable[nStartIndex].m_cExists == 0)
+				{
+					lpTable[nStartIndex].m_cExists = 1;
+					lpTable[nStartIndex].m_uHashA  = uHashA;
+					lpTable[nStartIndex].m_uHashB  = uHashB;
+					if(NULL != lpTable[nStartIndex].m_szKey)
+					{
+#ifndef WIN32
+						sprintf(lpTable[nStartIndex].m_szKey, "%s", lpszString);
+#else
+						sprintf_s(lpTable[nStartIndex].m_szKey, lpTable[nStartIndex].m_nKeySize, "%s", lpszString);
+#endif
+					}	
+
+					return nStartIndex;
+				}
+			}			
+			
 			//继续寻找
 			if(uHashA == lpTable[nStartIndex].m_uHashA && uHashB == lpTable[nStartIndex].m_uHashB)
 			{
@@ -245,15 +268,6 @@ int DelHashTablePos(const char *lpszString, _Hash_Table_Cell *lpTable, int nCoun
 	}
 	else
 	{
-		if(-1 != lpTable[nPos].m_nProvKeyIndex)
-		{
-			lpTable[lpTable[nPos].m_nProvKeyIndex].m_nNextKeyIndex = lpTable[nPos].m_nNextKeyIndex;
-		}
-		
-		if(-1 != lpTable[nPos].m_nNextKeyIndex)
-		{
-			lpTable[lpTable[nPos].m_nNextKeyIndex].m_nProvKeyIndex = lpTable[nPos].m_nProvKeyIndex;
-		}
 		Clear_Hash_Table_Cell(&lpTable[nPos]);
 				
 		return nPos;
