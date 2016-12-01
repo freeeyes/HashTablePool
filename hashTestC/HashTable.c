@@ -130,7 +130,7 @@ int GetLastClashKey(_Hash_Table_Cell *lpTable, int nCount, int nStartIndex, cons
 				//开始寻找空余的位置
 				//向后找空余
 				int i;
-				for(i = nStartIndex; i < nCount; i++)
+				for(i = nStartIndex + 1; i < nCount; i++)
 				{
 					if(lpTable[i].m_cExists == 0)
 					{
@@ -268,6 +268,16 @@ int DelHashTablePos(const char *lpszString, _Hash_Table_Cell *lpTable, int nCoun
 	}
 	else
 	{
+		if(-1 != lpTable[nPos].m_nProvKeyIndex)
+		{
+			lpTable[lpTable[nPos].m_nProvKeyIndex].m_nNextKeyIndex = lpTable[nPos].m_nNextKeyIndex;
+		}
+		
+		if(-1 != lpTable[nPos].m_nNextKeyIndex)
+		{
+			lpTable[lpTable[nPos].m_nNextKeyIndex].m_nProvKeyIndex = lpTable[nPos].m_nProvKeyIndex;
+		}
+
 		Clear_Hash_Table_Cell(&lpTable[nPos]);
 				
 		return nPos;
